@@ -1,0 +1,8 @@
+body{
+    background-image: url('../img/log.jpg');
+    background-size: cover;
+    background-repeat: no-repeat;
+  }
+  .container {
+    opacity: 95%;
+  }
