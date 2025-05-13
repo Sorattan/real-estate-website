@@ -77,7 +77,7 @@ You can run it on XAMPP under `htdocs`, then visit: http://localhost/Website/
 **1. Clone or download** this repo into your XAMPP `htdocs` folder, renaming folder to `Website` if needed:
 
    ```
-   C:\xampp\htdocs\Website\
+    C:\xampp\htdocs\Website\
    ```
    
 **2. Create the database**
@@ -86,26 +86,25 @@ You can run it on XAMPP under `htdocs`, then visit: http://localhost/Website/
 
    - Import the schema file:
 
-    ```
+   ```
     Database/realestate.sql
-    ```
+   ```
     
 **3. Configure DB connection**
    - Open baglanti.php and personalize (if you want) your MySQL credentials. `Default values`:
  
-    ```
+   ```
     $host   = 'localhost';
     $kullanici   = 'root';
     $parola   = '';
     $vt = 'realestate';
-    ```
+   ```
    
 **4. (Optional) Run installer**
    - If you prefer a web-based setup, open:
-
-    ```
-    http://localhost/Website/kurulum.php
-    ```
+  ```
+   http://localhost/Website/kurulum.php
+  ```
 
 **5. Start Using**
    - Visit http://localhost/Website/
