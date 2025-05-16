@@ -1,90 +1,72 @@
 <?php
-// Oturum başlatma
 session_start();
-
-// Veritabanı bağlantısı
 require_once 'baglanti.php';
 
-// Kullanıcı giriş kontrolü
-if (!isset($_SESSION["admin_kullanici"]) || !isset($_SESSION["admin_giris"]) || $_SESSION["admin_giris"] !== true) {
-    // Giriş yapılmamış, yönlendir
+// Giriş kontrol
+if (!isset($_SESSION["admin_kullanici"], $_SESSION["admin_giris"]) || $_SESSION["admin_giris"] !== true) {
+    // Yönlendirme
     header("Location: index.php");
     exit();
 }
 
-// Aktif emlakçı bilgilerini al
-$emlakci_adi = $_SESSION["admin_kullanici"];
-$emlakci_id = 0;
 
-$emlakci_sorgu = mysqli_query($baglanti, "SELECT * FROM kullanicilar WHERE kullanici_adi = '$emlakci_adi'");
+// Aktif emlakçıyı al
+$emlakci_adi = $_SESSION["admin_kullanici"];
+$emlakci_id  = 0;
+
+$emlakci_sorgu = mysqli_query($baglanti,"SELECT * FROM `kullanıcılar` WHERE `kullanıcı_adı` = '" . mysqli_real_escape_string($baglanti, $emlakci_adi) . "'");
 if ($emlakci = mysqli_fetch_assoc($emlakci_sorgu)) {
     $emlakci_id = $emlakci['id'];
 }
 
-// Profil güncelleme işlemi
+// Profil güncelleme
 $guncellendi = false;
 $hata_mesaji = "";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["profil_guncelle"])) {
-    $yeni_email = mysqli_real_escape_string($baglanti, $_POST["email"]);
-    $yeni_tel = mysqli_real_escape_string($baglanti, $_POST["tel"]);
-    $eski_parola = $_POST["eski_parola"];
-    $yeni_parola = $_POST["yeni_parola"];
-    $yeni_parola_tekrar = $_POST["yeni_parola_tekrar"];
 
-    // Parola değişikliği isteniyor mu?
-    $parola_degistir = !empty($yeni_parola) && !empty($eski_parola);
-    
+    $yeni_email = mysqli_real_escape_string($baglanti, $_POST["email"]);
+    $yeni_tel   = mysqli_real_escape_string($baglanti, $_POST["tel"]);
+    $eski_parola= $_POST["eski_parola"] ?? '';
+    $yeni_parola= $_POST["yeni_parola"] ?? '';
+    $yeni_parola_tekrar = $_POST["yeni_parola_tekrar"] ?? '';
+    // Parola değiştirilecek mi
+    $parola_degistir = ($yeni_parola !== '' && $eski_parola !== '');
     if ($parola_degistir) {
-        // Mevcut parolayı doğrula
         if (!password_verify($eski_parola, $emlakci['parola'])) {
             $hata_mesaji = "Mevcut şifreniz doğru değil.";
         } elseif ($yeni_parola !== $yeni_parola_tekrar) {
             $hata_mesaji = "Yeni şifreler eşleşmiyor.";
         } else {
-            // Yeni şifreyi hashle
+            // Yeni şifre hash
             $hash_parola = password_hash($yeni_parola, PASSWORD_DEFAULT);
-            
-            // Güncelleme sorgusu (parola dahil)
-            $guncelle = "UPDATE kullanicilar SET 
-                        email = '$yeni_email', 
-                        tel = '$yeni_tel', 
-                        parola = '$hash_parola' 
-                        WHERE id = $emlakci_id";
+            // Bilgi güncelleme (parola dahil)
+            $guncelle = "UPDATE `kullanıcılar` SET email = '$yeni_email', tel   = '$yeni_tel', parola= '$hash_parola' WHERE id = $emlakci_id";
         }
     } else {
         // Sadece email ve telefon güncelleme
-        $guncelle = "UPDATE kullanicilar SET 
-                    email = '$yeni_email', 
-                    tel = '$yeni_tel' 
-                    WHERE id = $emlakci_id";
+        $guncelle = "UPDATE `kullanıcılar` SET email = '$yeni_email', tel   = '$yeni_tel' WHERE id = $emlakci_id";
     }
-    
-    // Güncelleme işlemini gerçekleştir
-    if (empty($hata_mesaji)) {
+    // Güncelle
+    if ($hata_mesaji === '') {
         if (mysqli_query($baglanti, $guncelle)) {
             $guncellendi = true;
-            
-            // Güncel verileri çek
-            $emlakci_sorgu = mysqli_query($baglanti, "SELECT * FROM kullanicilar WHERE id = $emlakci_id");
-            $emlakci = mysqli_fetch_assoc($emlakci_sorgu);
+            // Güncel verileri al
+            $emlakci = mysqli_fetch_assoc(mysqli_query($baglanti, "SELECT * FROM `kullanıcılar` WHERE id = $emlakci_id"));
         } else {
-            $hata_mesaji = "Profil güncellenirken bir hata oluştu: " . mysqli_error($baglanti);
+            $hata_mesaji = "Profil güncellenirken hata: " . mysqli_error($baglanti);
         }
     }
 }
 
 // Toplam ilan sayısı
-$toplam_ilan_sorgu = mysqli_query($baglanti, "SELECT COUNT(*) as toplam FROM mülk WHERE emlakçı_id = $emlakci_id");
-$toplam_ilan = mysqli_fetch_assoc($toplam_ilan_sorgu)['toplam'] ?? 0;
+$toplam_ilan = mysqli_fetch_assoc(mysqli_query($baglanti,"SELECT COUNT(*) AS toplam FROM `mülk` WHERE emlakçı_id = $emlakci_id"))['toplam'] ?? 0;
 
 // Toplam randevu sayısı
-$toplam_randevu_sorgu = mysqli_query($baglanti, "SELECT COUNT(*) as toplam FROM randevu WHERE emlakçı_id = $emlakci_id");
-$toplam_randevu = mysqli_fetch_assoc($toplam_randevu_sorgu)['toplam'] ?? 0;
+$toplam_randevu  = mysqli_fetch_assoc(mysqli_query($baglanti,"SELECT COUNT(*) AS toplam FROM `randevu` WHERE emlakçı_id = $emlakci_id"))['toplam'] ?? 0;
 
 // Toplam satış sayısı
-$toplam_satis_sorgu = mysqli_query($baglanti, "SELECT COUNT(*) as toplam FROM satın_alım WHERE emlakçı_id = $emlakci_id");
-$toplam_satis = mysqli_fetch_assoc($toplam_satis_sorgu)['toplam'] ?? 0;
+$toplam_satis = mysqli_fetch_assoc(mysqli_query($baglanti,"SELECT COUNT(*) AS toplam FROM `satın_alım` WHERE emlakçı_id = $emlakci_id"))['toplam'] ?? 0;
 ?>
 
 <!DOCTYPE html>
