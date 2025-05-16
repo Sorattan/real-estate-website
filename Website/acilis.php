@@ -1,13 +1,10 @@
 <?php
-// Oturum başlatma
 session_start();
-
-// Veritabanı bağlantısı
 require_once 'baglanti.php';
 
-// Kullanıcı giriş kontrolü
-if (!isset($_SESSION["admin_kullanici"]) || !isset($_SESSION["admin_giris"]) || $_SESSION["admin_giris"] !== true) {
-    // Giriş yapılmamış, yönlendir
+// Giriş kontrolü
+if (!isset($_SESSION["admin_kullanici"], $_SESSION["admin_giris"]) || $_SESSION["admin_giris"] !== true) {
+    // Giriş yapılmamışsa "giriş"e yönlendiriyor
     header("Location: giris.php");
     exit();
 }
@@ -16,62 +13,53 @@ if (!isset($_SESSION["admin_kullanici"]) || !isset($_SESSION["admin_giris"]) || 
 $emlakci_adi = $_SESSION["admin_kullanici"];
 $emlakci_id = 0;
 
-$emlakci_sorgu = mysqli_query($baglanti, "SELECT id FROM kullanicilar WHERE kullanici_adi = '$emlakci_adi'");
+// Emlakçı ID’si alma
+$emlakci_sorgu = mysqli_query($baglanti,"SELECT id FROM `kullanıcılar` WHERE `kullanıcı_adı` = '" . mysqli_real_escape_string($baglanti, $emlakci_adi) . "'");
 if ($emlakci = mysqli_fetch_assoc($emlakci_sorgu)) {
     $emlakci_id = $emlakci['id'];
 }
 
-// İstatistikler
 // Emlakçıya ait toplam mülk sayısı
-$toplam_mulk_sorgu = mysqli_query($baglanti, "SELECT COUNT(*) as toplam FROM mülk WHERE emlakçı_id = '$emlakci_id'");
-$toplam_mulk = mysqli_fetch_assoc($toplam_mulk_sorgu)['toplam'];
-
+$toplam_mulk = mysqli_fetch_assoc(mysqli_query($baglanti, "SELECT COUNT(*) AS toplam FROM `mülk` WHERE emlakçı_id = '$emlakci_id'"))['toplam'];
 // Emlakçıya ait kiralık mülk sayısı
-$kiralik_sorgu = mysqli_query($baglanti, "SELECT COUNT(*) as toplam FROM mülk WHERE durum = 'kiralık' AND emlakçı_id = '$emlakci_id'");
-$kiralik_mulk = mysqli_fetch_assoc($kiralik_sorgu)['toplam'];
-
+$kiralik_mulk = mysqli_fetch_assoc(mysqli_query($baglanti, "SELECT COUNT(*) AS toplam FROM `mülk` WHERE durum = 'Kiralık' AND emlakçı_id = '$emlakci_id'"))['toplam'];
 // Emlakçıya ait satılık mülk sayısı
-$satilik_sorgu = mysqli_query($baglanti, "SELECT COUNT(*) as toplam FROM mülk WHERE durum = 'satılık' AND emlakçı_id = '$emlakci_id'");
-$satilik_mulk = mysqli_fetch_assoc($satilik_sorgu)['toplam'];
-
+$satilik_mulk = mysqli_fetch_assoc(mysqli_query($baglanti, "SELECT COUNT(*) AS toplam FROM `mülk` WHERE durum = 'Satılık' AND emlakçı_id = '$emlakci_id'"))['toplam'];
 // Satılan/kiralanan mülk sayısı (aktif=0 olanlar)
-$satilan_kiralanan_sorgu = mysqli_query($baglanti, "SELECT COUNT(*) as toplam FROM mülk WHERE aktif = 0 AND emlakçı_id = '$emlakci_id'");
-$satilan_kiralanan = mysqli_fetch_assoc($satilan_kiralanan_sorgu)['toplam'];
+$satilan_kiralanan = mysqli_fetch_assoc(mysqli_query($baglanti, "SELECT COUNT(*) AS toplam FROM `mülk` WHERE aktif = 0 AND emlakçı_id = '$emlakci_id'"))['toplam'];
 
 // Emlakçının son 3 müşterisi
-// Not: Bu sorgu müşteri tablosunda bir emlakçı_id alanı olduğunu varsayar
-// Eğer böyle bir ilişki yoksa başka bir tablodan (örn. randevu) emlakçıya bağlı müşteriler bulunabilir
-$son_musteriler_sorgu = mysqli_query($baglanti, "
-    SELECT DISTINCT mu.kullanici_adi, mu.id 
-    FROM müşteri mu
-    INNER JOIN randevu r ON mu.id = r.müşteri_id
-    INNER JOIN mülk m ON r.ilan_id = m.id
-    WHERE m.emlakçı_id = '$emlakci_id'
-    ORDER BY mu.id DESC 
-    LIMIT 3
-");
+$son_musteriler_sorgu = mysqli_query($baglanti, 
+    "SELECT DISTINCT mu.`kullanıcı_adı` AS kullanici_adi, mu.id
+    FROM   `müşteri` mu
+    INNER  JOIN `randevu` r ON mu.id = r.müşteri_id
+    INNER  JOIN `mülk`   m ON r.ilan_id = m.id
+    WHERE  m.emlakçı_id = '$emlakci_id'
+    ORDER  BY mu.id DESC
+    LIMIT 3"
+);
 
 // Emlakçının yaklaşan 5 randevusu
-$yaklasan_randevular_sorgu = mysqli_query($baglanti, "
-    SELECT r.*, m.başlık as mulk_adi, mu.kullanici_adi as musteri_adi
-    FROM randevu r
-    LEFT JOIN mülk m ON r.ilan_id = m.id
-    LEFT JOIN müşteri mu ON r.müşteri_id = mu.id
+$yaklasan_randevular_sorgu = mysqli_query($baglanti, 
+    "SELECT r.*, m.başlık AS mulk_adi, mu.`kullanıcı_adı` AS musteri_adi
+    FROM `randevu` r
+    LEFT JOIN `mülk` m ON r.ilan_id = m.id
+    LEFT JOIN `müşteri` mu ON r.müşteri_id = mu.id
     WHERE r.randevu_tarihi >= CURDATE() AND m.emlakçı_id = '$emlakci_id'
     ORDER BY r.randevu_tarihi ASC, r.randevu_saat ASC
-    LIMIT 5
-");
+    LIMIT 5"
+);
 
 // Emlakçının son 3 satışı/kiralaması
-$son_satislar_sorgu = mysqli_query($baglanti, "
-    SELECT s.*, m.başlık as mulk_adi, mu.kullanici_adi as musteri_adi
-    FROM satın_alım s
-    LEFT JOIN mülk m ON s.ilan_id = m.id
-    LEFT JOIN müşteri mu ON s.müşteri_id = mu.id
+$son_satislar_sorgu = mysqli_query($baglanti, 
+    "SELECT s.*, m.başlık AS mulk_adi, mu.`kullanıcı_adı` AS musteri_adi
+    FROM `satın_alım` s
+    LEFT JOIN `mülk` m ON s.ilan_id = m.id
+    LEFT JOIN `müşteri` mu ON s.müşteri_id = mu.id
     WHERE s.emlakçı_id = '$emlakci_id'
     ORDER BY s.alım_tarihi DESC
-    LIMIT 3
-");
+    LIMIT 3"
+);
 ?>
 
 <!DOCTYPE html>
@@ -335,9 +323,7 @@ $son_satislar_sorgu = mysqli_query($baglanti, "
                                                     <i class="fas fa-user text-secondary me-2"></i>
                                                     <?= htmlspecialchars($musteri['kullanici_adi']) ?>
                                                 </span>
-                                                <small class="text-muted">
-                                                    ID: <?= $musteri['id'] ?>
-                                                </small>
+                                                <small class="text-muted">ID: <?= $musteri['id'] ?></small>
                                             </li>
                                         <?php endwhile; ?>
                                     </ul>
