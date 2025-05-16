@@ -1,27 +1,23 @@
 <?php
-// Oturum başlatma
 session_start();
-
-// Veritabanı bağlantısı
 require_once 'baglanti.php';
 
-// Kullanıcı giriş kontrolü
+// Giriş kontrol
 if (!isset($_SESSION["admin_kullanici"]) || !isset($_SESSION["admin_giris"]) || $_SESSION["admin_giris"] !== true) {
-    // Giriş yapılmamış, yönlendir
+    // yönlendirme
     header("Location: giris.php");
     exit();
 }
 
-// Aktif emlakçı bilgilerini al
+// Aktif emlakçı bilgileri
 $emlakci_adi = $_SESSION["admin_kullanici"];
 $emlakci_id = 0;
-
-$emlakci_sorgu = mysqli_query($baglanti, "SELECT id FROM kullanicilar WHERE kullanici_adi = '$emlakci_adi'");
+$emlakci_sorgu = mysqli_query($baglanti,"SELECT id FROM `kullanıcılar` WHERE `kullanıcı_adı` = '" . mysqli_real_escape_string($baglanti, $emlakci_adi) . "'");
 if ($emlakci = mysqli_fetch_assoc($emlakci_sorgu)) {
     $emlakci_id = $emlakci['id'];
 }
 
-// Teklif silme işlemi
+// Teklif silme
 if (isset($_GET['sil']) && is_numeric($_GET['sil'])) {
     $teklif_id = intval($_GET['sil']);
     $sil_sorgu = mysqli_query($baglanti, "DELETE FROM teklif WHERE id = $teklif_id");
@@ -35,26 +31,27 @@ if (isset($_GET['sil']) && is_numeric($_GET['sil'])) {
     }
 }
 
-// Teklif onaylama işlemi (örnektir, gerekirse değiştirilebilir)
+// Teklif onaylama
 if (isset($_GET['onayla']) && is_numeric($_GET['onayla'])) {
     $teklif_id = intval($_GET['onayla']);
-    // Burada teklifin onaylanma işlemleri yapılabilir
-    // Örneğin, teklif durumunu "onaylandı" olarak değiştirebilirsiniz
-    // veya satış tablosuna kayıt ekleyebilirsiniz
-    
     $onay_mesaji = "Teklif başarıyla onaylandı!";
     $onay_durum = "success";
 }
 
-// Yeni teklifleri getir (sadece giriş yapan emlakçıya ait mülklerin teklifleri)
-$yeni_teklifler_sorgu = mysqli_query($baglanti, "
-    SELECT t.*, m.başlık as mulk_adi, m.fiyat as mulk_fiyat, m.durum as mulk_durum, mu.kullanici_adi as musteri_adi 
-    FROM teklif t
-    LEFT JOIN mülk m ON t.ilan_id = m.id
-    LEFT JOIN müşteri mu ON t.müşteri_id = mu.id
+// Yeni teklifler
+$yeni_teklifler_sorgu = mysqli_query($baglanti, 
+    "SELECT  t.*,
+    m.başlık AS mulk_adi,
+    m.fiyat AS mulk_fiyat,
+    m.durum AS mulk_durum,
+    mu.`kullanıcı_adı` AS musteri_adi
+    FROM `teklif` t
+    LEFT JOIN `mülk` m  ON t.ilan_id = m.id
+    LEFT JOIN `müşteri` mu ON t.müşteri_id  = mu.id
     WHERE m.emlakçı_id = '$emlakci_id'
-    ORDER BY t.id DESC
-");
+    ORDER BY t.id DESC"
+) or die(mysqli_error($baglanti));
+
 ?>
 
 <!DOCTYPE html>
