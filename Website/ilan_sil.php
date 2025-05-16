@@ -1,55 +1,44 @@
 <?php
-// Oturum başlatma
 session_start();
-
-// Veritabanı bağlantısı
 require_once 'baglanti.php';
 
-// Kullanıcı giriş kontrolü
-if (!isset($_SESSION["admin_kullanici"]) || !isset($_SESSION["admin_giris"]) || $_SESSION["admin_giris"] !== true) {
-    // Giriş yapılmamış, yönlendir
+// Giriş kontrolü
+if (!isset($_SESSION["admin_kullanici"], $_SESSION["admin_giris"]) || $_SESSION["admin_giris"] !== true) {
+    // Giriş yapılmamışsa "giris"e git
     header("Location: giris.php");
     exit();
 }
 
-// Aktif emlakçı bilgilerini al
+// Aktif emlakçıyı bul
 $emlakci_adi = $_SESSION["admin_kullanici"];
-$emlakci_id = 0;
-
-$emlakci_sorgu = mysqli_query($baglanti, "SELECT id FROM kullanicilar WHERE kullanici_adi = '$emlakci_adi'");
+$emlakci_id  = 0;
+$emlakci_sorgu = mysqli_query($baglanti,"SELECT id FROM `kullanıcılar` WHERE `kullanıcı_adı` = '" . mysqli_real_escape_string($baglanti, $emlakci_adi) . "'");
 if ($emlakci = mysqli_fetch_assoc($emlakci_sorgu)) {
     $emlakci_id = $emlakci['id'];
 }
 
-// ID kontrolü
+// İlan silme
 if (isset($_GET['id']) && is_numeric($_GET['id'])) {
     $ilan_id = intval($_GET['id']);
-    
-    // İlanın var olup olmadığını ve bu emlakçıya ait olup olmadığını kontrol et
-    $ilan_sorgu = mysqli_query($baglanti, "SELECT * FROM mülk WHERE id = $ilan_id");
-    
+
+    // İlanın var mı, emlakçının mı
+    $ilan_sorgu = mysqli_query($baglanti, "SELECT * FROM `mülk` WHERE id = $ilan_id");
     if (mysqli_num_rows($ilan_sorgu) > 0) {
-        $ilan = mysqli_fetch_assoc($ilan_sorgu);
-        
+
         // İlanı sil
-        $sil_sorgu = mysqli_query($baglanti, "DELETE FROM mülk WHERE id = $ilan_id");
-        
-        if ($sil_sorgu) {
-            // Başarılı silme, mülkler sayfasına yönlendir
+        if (mysqli_query($baglanti, "DELETE FROM `mülk` WHERE id = $ilan_id")) {
             header("Location: mulkler.php?silindi=1");
             exit();
         } else {
-            // Silme hatası
             header("Location: mulkler.php?hata=silme");
             exit();
         }
     } else {
-        // İlan bulunamadı
         header("Location: mulkler.php?hata=bulunamadi");
         exit();
     }
 } else {
-    // Geçersiz ID
+    // İlan yok
     header("Location: mulkler.php?hata=gecersiz_id");
     exit();
 }
