@@ -16,94 +16,54 @@
             <h2 class="text-center">Müşteri Giriş</h2>
             
             <?php
-            // Oturum başlatma
             session_start();
+            require_once 'baglanti.php';
+
+            $hata = $mesaj = "";
+
             
-            // Veritabanı bağlantısı için baglanti.php dosyasını dahil et
-            require_once "baglanti.php";
-            
-            // Hata mesajı için değişken
-            $hata = "";
-            $mesaj = "";
-            
-            // Tablo kontrolü ve oluşturma fonksiyonu
+            // Tablo kontrolü, gerekiyosa oluşturma
             function tabloKontrolEt($baglanti) {
-                // Tablo var mı kontrol et
-                $tabloKontrol = $baglanti->query("SHOW TABLES LIKE 'müşteri'");
-                
-                if ($tabloKontrol->num_rows == 0) {
-                    // Tablo yoksa oluştur
-                    $tabloOlustur = "CREATE TABLE `müşteri` (
-                        id INT(11) AUTO_INCREMENT PRIMARY KEY,
-                        kullanici_Adi VARCHAR(50) NOT NULL UNIQUE,
+                $varMi = $baglanti->query("SHOW TABLES LIKE 'müşteri'");
+                if ($varMi->num_rows == 0) {
+                    $sql = "CREATE TABLE `müşteri` (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        `kullanıcı_adı` VARCHAR(50) NOT NULL UNIQUE,
                         parola VARCHAR(255) NOT NULL,
-                        kayit_tarihi TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                    )";
-                    
-                    if ($baglanti->query($tabloOlustur) === TRUE) {
-                        return "Müşteri tablosu oluşturuldu. Test için bir kullanıcı ekleniyor...";
-                        
-                        // Test kullanıcısı ekle
-                        $testKullanici = "INSERT INTO `müşteri` (kullanici_Adi, parola) VALUES ('test', 'test123')";
-                        if ($baglanti->query($testKullanici) === TRUE) {
-                            return "Müşteri tablosu oluşturuldu ve test kullanıcısı eklendi (Kullanıcı adı: test, Parola: test123).";
-                        } else {
-                            return "Müşteri tablosu oluşturuldu fakat test kullanıcısı eklenemedi: " . $baglanti->error;
-                        }
-                    } else {
+                        email VARCHAR(50) DEFAULT '',
+                        tel VARCHAR(20) DEFAULT '',
+                        kayıt_tarihi TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+                    if (!$baglanti->query($sql)) {
                         return "Tablo oluşturma hatası: " . $baglanti->error;
                     }
                 }
                 return "";
             }
             
-            // İlk yüklemede tabloyu kontrol et
-            if ($_SERVER["REQUEST_METHOD"] != "POST") {
+            // İlk kez açılınca tablo kontrolü
+            if ($_SERVER["REQUEST_METHOD"] !== "POST") {
                 $mesaj = tabloKontrolEt($baglanti);
-                
-                // Test kullanıcısı ekliyoruz
-                if (empty($mesaj)) {
-                    $testKullaniciKontrol = $baglanti->query("SELECT * FROM `müşteri` WHERE kullanici_Adi = 'test'");
-                    if ($testKullaniciKontrol->num_rows == 0) {
-                        $testKullanici = "INSERT INTO `müşteri` (kullanici_Adi, parola) VALUES ('test', 'test123')";
-                        if ($baglanti->query($testKullanici) === TRUE) {
-                            $mesaj = "Test kullanıcısı eklendi (Kullanıcı adı: test, Parola: test123).";
-                        }
-                    }
-                }
             }
-            
-            // Eğer form gönderilmişse
+
             if ($_SERVER["REQUEST_METHOD"] == "POST") {
-                // Form verilerini alma
-                $kullanici_adi = $_POST["kullanici_adi"];
-                $parola = $_POST["parola"];
-                
-                // Boş alan kontrolü
-                if (empty($kullanici_adi) || empty($parola)) {
+                $kullanici_adi = $_POST["kullanici_adi"] ?? '';
+                $parola = $_POST["parola"] ?? '';
+
+                if ($kullanici_adi === '' || $parola === '') {
                     $hata = "Kullanıcı adı ve parola alanları boş bırakılamaz.";
                 } else {
-                    // SQL enjeksiyonu önleme
                     $kullanici_adi = $baglanti->real_escape_string($kullanici_adi);
-                    
-                    // Kullanıcı bilgilerini sorgulama
-                    $sql = "SELECT * FROM `müşteri` WHERE kullanici_Adi = '$kullanici_adi'";
-                    
+                    $sql = "SELECT * FROM `müşteri` WHERE `kullanıcı_adı` = '$kullanici_adi'";
                     $result = $baglanti->query($sql);
-                    
+
                     if ($result && $result->num_rows > 0) {
-                        // Kullanıcı bulundu, şimdi parola kontrolü
                         $row = $result->fetch_assoc();
-                        
-                        // Parolanın kontrolü
                         if ($row["parola"] == $parola) {
-                            // Giriş başarılı, oturum değişkenlerini ayarla
                             $_SESSION["kullanici_adi"] = $kullanici_adi;
                             $_SESSION["giris_yapildi"] = true;
-                            
-                            // Başarılı girişten sonra yönlendirme
                             header("Location: index.php");
-                            exit();
+                            exit;
                         } else {
                             $hata = "Hatalı parola!";
                         }
