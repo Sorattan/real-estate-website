@@ -2,24 +2,22 @@
 session_start();
 include("baglanti.php");
 
-$username_err = $parola_err = "";
-$hata = "";
+$username_err = $parola_err = $hata = "";
 $username = $parola = "";
 
-// Daha önce giriş yapılmışsa, direk açılış sayfasına yönlendir
-if(isset($_SESSION["admin_kullanici"]) && isset($_SESSION["admin_giris"]) && $_SESSION["admin_giris"] === true) {
+// Giriş yapılmışsa, açılış sayfasına git
+if (isset($_SESSION["admin_kullanici"], $_SESSION["admin_giris"]) && $_SESSION["admin_giris"] === true) {
     header("Location: acilis.php");
     exit;
 }
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    // Kullanıcı adı doğrulama
+    //Kullanıcı adı doğrulama
     if (empty($_POST["username"])) {
         $username_err = "Kullanıcı adı boş geçilemez.";
     } else {
         $username = $_POST["username"];
     }
-
     // Parola doğrulama
     if (empty($_POST["password"])) {
         $parola_err = "Parola boş geçilemez.";
@@ -27,10 +25,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $parola = $_POST["password"];
     }
 
-    // Eğer her şey doluysa devam et
+    // Her şey doğruys devam
     if (empty($username_err) && empty($parola_err)) {
-        $query = "SELECT * FROM kullanicilar WHERE kullanici_adi = ?";
-        $stmt = mysqli_prepare($baglanti, $query);
+        $query = "SELECT * FROM `kullanıcılar` WHERE `kullanıcı_adı` = ?";
+        $stmt  = mysqli_prepare($baglanti, $query);
         mysqli_stmt_bind_param($stmt, "s", $username);
         mysqli_stmt_execute($stmt);
         $result = mysqli_stmt_get_result($stmt);
@@ -40,14 +38,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $hashlisifre = $row["parola"];
 
             if (password_verify($parola, $hashlisifre)) {
-                // Oturum değişkenlerini ayarla - acilis.php ile uyumlu olması için admin_ öneki kullanıldı
-                $_SESSION["admin_kullanici"] = $row["kullanici_adi"];
+                $_SESSION["admin_kullanici"] = $row["kullanıcı_adı"];
                 $_SESSION["admin_giris"] = true;
                 $_SESSION["admin_id"] = $row["id"];
-                
-                // Son giriş sütununu kontrol et ve güncelleme işlemini gerçekleştir
-                // (Bu bölüm veritabanında son_giris sütunu olmadığı için kaldırıldı)
-                
                 header("Location: acilis.php");
                 exit();
             } else {
@@ -56,10 +49,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         } else {
             $hata = "Kullanıcı bulunamadı.";
         }
-
         mysqli_stmt_close($stmt);
     }
-
     mysqli_close($baglanti);
 }
 ?>
