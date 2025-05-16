@@ -5,44 +5,34 @@ include("baglanti.php");
 // Güvenlik kodu tanımla
 define("GUVENLIK_KODU", "1907");
 
-$hata = $basari = "";
+$hata = $basari = $parola_err = "";
 $name = $email = $phone = "";
-$parola_err = "";
 
-if (isset($_POST["kayit_ol"]))
-{
-    // Güvenlik kodunu kontrol et
+if (isset($_POST["kayit_ol"])) {
+    // Güvenlik kodu kontrolü
     $girilen_kod = $_POST["guvenlik_kodu"] ?? '';
-    
     // Şifre kontrolü
     $parola = $_POST["parola"] ?? '';
     $parola_tekrar = $_POST["parola_tekrar"] ?? '';
-    
+
     if ($parola !== $parola_tekrar) {
         $parola_err = "Girdiğiniz şifreler eşleşmiyor!";
         $hata = "Kayıt işlemi gerçekleştirilemedi.";
-    } 
-    elseif ($girilen_kod != GUVENLIK_KODU) {
+    } elseif ($girilen_kod != GUVENLIK_KODU) {
         $hata = "Hatalı güvenlik kodu! Kayıt işlemi gerçekleştirilemedi.";
-    } 
-    else {
-        $name = $_POST["kullanici_adi"];
-        $email = $_POST["email"];
-        $phone = $_POST["telefon"];
-        $password = password_hash($_POST["parola"], PASSWORD_DEFAULT);
+    } else {
+        $name     = mysqli_real_escape_string($baglanti, $_POST["kullanici_adi"]);
+        $email    = mysqli_real_escape_string($baglanti, $_POST["email"]);
+        $phone    = mysqli_real_escape_string($baglanti, $_POST["telefon"]);
+        $password = password_hash($parola, PASSWORD_DEFAULT);
 
-        $ekle = "INSERT INTO kullanicilar (kullanici_adi, email, parola, tel) 
-                 VALUES ('$name','$email','$password','$phone')";
-                 
-        $calistirekle = mysqli_query($baglanti, $ekle);
-
-        if ($calistirekle) {
+        $ekle = "INSERT INTO `kullanıcılar` (`kullanıcı_adı`, `email`, `parola`, `tel`) VALUES('$name', '$email', '$password', '$phone')";
+        if (mysqli_query($baglanti, $ekle)) {
             $basari = "Kayıt Başarılı";
         } else {
-            $hata = "Kayıt başarısız";
+            $hata = "Kayıt başarısız: " . mysqli_error($baglanti);
         }
     }
-
     mysqli_close($baglanti);
 }
 ?>
@@ -316,7 +306,7 @@ if (isset($_POST["kayit_ol"]))
     </div>
 
     <script>
-        // Şifre göster/gizle fonksiyonu
+        // Şifre göster/gizle
         document.getElementById('togglePassword').addEventListener('click', function() {
             const passwordInput = document.getElementById('password');
             const eyeIcon = document.getElementById('eyeIcon');
@@ -332,7 +322,7 @@ if (isset($_POST["kayit_ol"]))
             }
         });
         
-        // Şifre tekrar göster/gizle fonksiyonu
+        // Şifre tekrar göster/gizle
         document.getElementById('togglePasswordConfirm').addEventListener('click', function() {
             const passwordConfirmInput = document.getElementById('password_confirm');
             const eyeIconConfirm = document.getElementById('eyeIconConfirm');
@@ -348,7 +338,7 @@ if (isset($_POST["kayit_ol"]))
             }
         });
         
-        // Güvenlik kodu göster/gizle fonksiyonu
+        // Güvenlik kodu göster/gizle
         document.getElementById('toggleSecurityCode').addEventListener('click', function() {
             const securityCodeInput = document.getElementById('guvenlik_kodu');
             const securityEyeIcon = document.getElementById('securityEyeIcon');
