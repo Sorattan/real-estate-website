@@ -1,27 +1,21 @@
 <?php
-// Oturum başlatma
 session_start();
-
-// Veritabanı bağlantısı
 require_once 'baglanti.php';
 
-// Kullanıcı giriş kontrolü
+// Giriş kontrolü
 if (!isset($_SESSION["admin_kullanici"]) || !isset($_SESSION["admin_giris"]) || $_SESSION["admin_giris"] !== true) {
     // Giriş yapılmamış, yönlendir
     header("Location: giris.php");
     exit();
 }
-
-// Aktif emlakçı bilgilerini al
+// Aktif emlakçı bilgileri
 $emlakci_adi = $_SESSION["admin_kullanici"];
 $emlakci_id = 0;
-
-$emlakci_sorgu = mysqli_query($baglanti, "SELECT id FROM kullanicilar WHERE kullanici_adi = '$emlakci_adi'");
+$emlakci_sorgu = mysqli_query($baglanti, "SELECT id FROM `kullanıcılar` WHERE `kullanıcı_adı` = '" . mysqli_real_escape_string($baglanti, $emlakci_adi) . "'");
 if ($emlakci = mysqli_fetch_assoc($emlakci_sorgu)) {
     $emlakci_id = $emlakci['id'];
 }
-
-// Satış silme işlemi
+// Satış silme
 if (isset($_GET['sil']) && is_numeric($_GET['sil'])) {
     $satis_id = intval($_GET['sil']);
     $sil_sorgu = mysqli_query($baglanti, "DELETE FROM satın_alım WHERE id = $satis_id AND emlakçı_id = $emlakci_id");
@@ -34,39 +28,38 @@ if (isset($_GET['sil']) && is_numeric($_GET['sil'])) {
         $silme_durum = "danger";
     }
 }
-
-// Sadece bu emlakçıya ait satışları getir
-$satislar_sorgu = mysqli_query($baglanti, "
-    SELECT s.*, m.başlık as mulk_adi, m.fiyat as mulk_fiyat, m.durum as mulk_durum, 
-           mu.kullanici_adi as musteri_adi, k.kullanici_adi as emlakci_adi
-    FROM satın_alım s
-    LEFT JOIN mülk m ON s.ilan_id = m.id
-    LEFT JOIN müşteri mu ON s.müşteri_id = mu.id
-    LEFT JOIN kullanicilar k ON s.emlakçı_id = k.id
+// Emlakçının satışlar
+$satislar_sorgu = mysqli_query($baglanti, "SELECT  s.*, 
+    m.başlık AS mulk_adi, 
+    m.fiyat AS mulk_fiyat,
+    m.durum AS mulk_durum,
+    mu.`kullanıcı_adı` AS musteri_adi,  
+    k.`kullanıcı_adı` AS emlakci_adi
+    FROM `satın_alım` s
+    LEFT JOIN `mülk` m  ON s.ilan_id = m.id
+    LEFT JOIN `müşteri` mu ON s.müşteri_id  = mu.id
+    LEFT JOIN `kullanıcılar` k ON s.emlakçı_id  = k.id
     WHERE s.emlakçı_id = '$emlakci_id'
     ORDER BY s.alım_tarihi DESC
-");
-
-// Sadece bu emlakçının toplam satış tutarını hesapla
-$toplam_satis_sorgu = mysqli_query($baglanti, "
-    SELECT SUM(m.fiyat) as toplam_satis
+") or die(mysqli_error($baglanti));
+// Emlakçının toplam satış tutarı
+$toplam_satis_sorgu = mysqli_query($baglanti, 
+    "SELECT SUM(m.fiyat) as toplam_satis
     FROM satın_alım s
     LEFT JOIN mülk m ON s.ilan_id = m.id
-    WHERE s.emlakçı_id = '$emlakci_id'
-");
+    WHERE s.emlakçı_id = '$emlakci_id'"
+);
 $toplam_satis = mysqli_fetch_assoc($toplam_satis_sorgu)['toplam_satis'] ?? 0;
-
-// Sadece bu emlakçının son 30 günlük satışlarını getir
+// Emlakçının son 30 günlük satışları
 $son_ay = date('Y-m-d', strtotime('-30 days'));
-$son_ay_satislar_sorgu = mysqli_query($baglanti, "
-    SELECT SUM(m.fiyat) as toplam_satis
+$son_ay_satislar_sorgu = mysqli_query($baglanti, 
+    "SELECT SUM(m.fiyat) as toplam_satis
     FROM satın_alım s
     LEFT JOIN mülk m ON s.ilan_id = m.id
-    WHERE s.alım_tarihi >= '$son_ay' AND s.emlakçı_id = '$emlakci_id'
-");
+    WHERE s.alım_tarihi >= '$son_ay' AND s.emlakçı_id = '$emlakci_id'"
+);
 $son_ay_satis = mysqli_fetch_assoc($son_ay_satislar_sorgu)['toplam_satis'] ?? 0;
-
-// Toplam satış sayısı
+// Toplam satış
 $toplam_satis_sayisi = mysqli_num_rows($satislar_sorgu);
 ?>
 
