@@ -1,60 +1,52 @@
 <?php
-// Oturum başlatma
 session_start();
-
-// Veritabanı bağlantısı
 require_once 'baglanti.php';
 
-// Kullanıcı giriş kontrolü
-if (!isset($_SESSION["admin_kullanici"]) || !isset($_SESSION["admin_giris"]) || $_SESSION["admin_giris"] !== true) {
-    // Giriş yapılmamış, yönlendir
+// Giriş kontrolü
+if (!isset($_SESSION["admin_kullanici"], $_SESSION["admin_giris"]) || $_SESSION["admin_giris"] !== true) {
     header("Location: giris.php");
     exit();
 }
 
-// Aktif emlakçı bilgilerini al
+// Aktif emlakçıyı bul
 $emlakci_adi = $_SESSION["admin_kullanici"];
-$emlakci_id = 0;
+$emlakci_id  = 0;
 
-$emlakci_sorgu = mysqli_query($baglanti, "SELECT id FROM kullanicilar WHERE kullanici_adi = '$emlakci_adi'");
+$emlakci_sorgu = mysqli_query($baglanti,"SELECT id FROM `kullanıcılar` WHERE `kullanıcı_adı` = '" . mysqli_real_escape_string($baglanti, $emlakci_adi) . "'");
 if ($emlakci = mysqli_fetch_assoc($emlakci_sorgu)) {
     $emlakci_id = $emlakci['id'];
 }
 
-// İlan ekleme işlemleri
+// İlan ekleme
 $ilan_eklendi = false;
-$hata_mesaji = "";
+$hata_mesaji  = "";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["ilan_ekle"])) {
-    // Form verilerini al
-    $baslik = mysqli_real_escape_string($baglanti, $_POST["baslik"]);
-    $aciklama = mysqli_real_escape_string($baglanti, $_POST["aciklama"]);
-    $fiyat = intval($_POST["fiyat"]);
+    $baslik     = mysqli_real_escape_string($baglanti, $_POST["baslik"]);
+    $aciklama   = mysqli_real_escape_string($baglanti, $_POST["aciklama"]);
+    $fiyat      = intval($_POST["fiyat"]);
     $oda_sayisi = intval($_POST["oda_sayisi"]);
-    $metrekare = intval($_POST["metrekare"]);
-    $sehir = mysqli_real_escape_string($baglanti, $_POST["sehir"]);
-    $ilce = mysqli_real_escape_string($baglanti, $_POST["ilce"]);
-    $tur = mysqli_real_escape_string($baglanti, $_POST["tur"]);
-    $durum = mysqli_real_escape_string($baglanti, $_POST["durum"]);
-    
-    // Form verilerini kontrol et
+    $metrekare  = intval($_POST["metrekare"]);
+    $sehir      = mysqli_real_escape_string($baglanti, $_POST["sehir"]);
+    $ilce       = mysqli_real_escape_string($baglanti, $_POST["ilce"]);
+    $tur        = mysqli_real_escape_string($baglanti, $_POST["tur"]);
+    $durum_input = strtolower(mysqli_real_escape_string($baglanti, $_POST["durum"]));
+    $durum_map   = ["satılık" => "Satılık", "kiralık" => "Kiralık"];
+    $durum       = $durum_map[$durum_input] ?? "Satılık";
+    // Bütün veriler doldurulmuş mu
     if (empty($baslik) || empty($aciklama) || $fiyat <= 0 || $metrekare <= 0 || empty($sehir) || empty($ilce)) {
         $hata_mesaji = "Lütfen tüm alanları doldurun.";
     } else {
-        // İlanı veritabanına ekle
-        $ilan_ekle = "INSERT INTO mülk (emlakçı_id, başlık, açıklama, fiyat, odasayısı, `m^2`, şehir, ilçe, tür, durum) 
-                      VALUES ('$emlakci_id', '$baslik', '$aciklama', '$fiyat', '$oda_sayisi', '$metrekare', '$sehir', '$ilce', '$tur', '$durum')";
-        
+        $ilan_ekle = "INSERT INTO `mülk` (emlakçı_id, başlık, açıklama, fiyat, odasayısı, `m^2`, şehir, ilçe, tür, durum) VALUES('$emlakci_id', '$baslik', '$aciklama', '$fiyat', '$oda_sayisi', '$metrekare', '$sehir', '$ilce', '$tur', '$durum')";
         if (mysqli_query($baglanti, $ilan_ekle)) {
             $ilan_eklendi = true;
         } else {
-            $hata_mesaji = "İlan eklenirken bir hata oluştu: " . mysqli_error($baglanti);
+            $hata_mesaji = "İlan eklenirken hata: " . mysqli_error($baglanti);
         }
     }
 }
-
-// İlanları getir
-$ilanlar_sorgu = mysqli_query($baglanti, "SELECT * FROM mülk WHERE emlakçı_id = '$emlakci_id' ORDER BY id DESC");
+// İlanlar
+$ilanlar_sorgu = mysqli_query($baglanti,"SELECT * FROM `mülk` WHERE emlakçı_id = '$emlakci_id' ORDER BY id DESC");
 ?>
 
 <!DOCTYPE html>
@@ -287,7 +279,7 @@ $ilanlar_sorgu = mysqli_query($baglanti, "SELECT * FROM mülk WHERE emlakçı_id
                                                 <td><?= htmlspecialchars($ilan['tür']) ?></td>
                                                 <td><?= number_format($ilan['fiyat'], 0, ',', '.') ?> TL</td>
                                                 <td>
-                                                    <span class="badge <?= ($ilan['durum'] == 'satılık') ? 'bg-danger' : 'bg-primary' ?>">
+                                                    <span class="badge <?= ($ilan['durum'] == 'Satılık') ? 'bg-danger' : 'bg-primary' ?>">
                                                         <?= htmlspecialchars($ilan['durum']) ?>
                                                     </span>
                                                 </td>
@@ -354,10 +346,10 @@ $ilanlar_sorgu = mysqli_query($baglanti, "SELECT * FROM mülk WHERE emlakçı_id
                             <div class="col-md-6">
                                 <label for="durum" class="form-label">Durum *</label>
                                 <select class="form-select" id="durum" name="durum" required>
-                                    <option value="">Seçiniz</option>
-                                    <option value="satılık">Satılık</option>
-                                    <option value="kiralık">Kiralık</option>
-                                </select>
+                                <option value="">Seçiniz</option>
+                                <option value="Satılık">Satılık</option>
+                                <option value="Kiralık">Kiralık</option>
+                            </select>
                             </div>
                         </div>
                         
