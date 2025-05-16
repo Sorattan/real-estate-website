@@ -1,26 +1,21 @@
 <?php
-// Oturum başlatma
 session_start();
-
-// Veritabanı bağlantısı
 require_once 'baglanti.php';
 
-// Kullanıcı giriş kontrolü
-if (!isset($_SESSION["admin_kullanici"]) || !isset($_SESSION["admin_giris"]) || $_SESSION["admin_giris"] !== true) {
-    // Giriş yapılmamış, yönlendir
+// Giriş kontrolü
+if (!isset($_SESSION["admin_kullanici"], $_SESSION["admin_giris"]) || $_SESSION["admin_giris"] !== true) {
+    // Giriş yapılmamış "giris"e git
     header("Location: giris.php");
     exit();
 }
 
-// Aktif emlakçı bilgilerini al
+// Aktif emlakçıyı bul
 $emlakci_adi = $_SESSION["admin_kullanici"];
-$emlakci_id = 0;
-
-$emlakci_sorgu = mysqli_query($baglanti, "SELECT id FROM kullanicilar WHERE kullanici_adi = '$emlakci_adi'");
+$emlakci_id  = 0;
+$emlakci_sorgu = mysqli_query($baglanti, "SELECT id FROM `kullanıcılar` WHERE `kullanıcı_adı` = '" . mysqli_real_escape_string($baglanti, $emlakci_adi) . "'");
 if ($emlakci = mysqli_fetch_assoc($emlakci_sorgu)) {
     $emlakci_id = $emlakci['id'];
 }
-
 $ilan = null;
 $guncellendi = false;
 $hata_mesaji = "";
@@ -29,59 +24,46 @@ $hata_mesaji = "";
 if (isset($_GET['id']) && is_numeric($_GET['id'])) {
     $ilan_id = intval($_GET['id']);
     
-    // İlanın var olup olmadığını kontrol et
-    $ilan_sorgu = mysqli_query($baglanti, "SELECT * FROM mülk WHERE id = $ilan_id");
-    
+    // İlanın var mı yok mu
+    $ilan_sorgu = mysqli_query($baglanti, "SELECT * FROM `mülk` WHERE id = $ilan_id");
     if (mysqli_num_rows($ilan_sorgu) > 0) {
         $ilan = mysqli_fetch_assoc($ilan_sorgu);
     } else {
-        // İlan bulunamadı
+        // İlan yok
         header("Location: mulkler.php?hata=bulunamadi");
         exit();
     }
 } else {
-    // Geçersiz ID
+    // ID geçersiz
     header("Location: mulkler.php?hata=gecersiz_id");
     exit();
 }
 
-// Form gönderildi mi?
+// Form gönderildi mi
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["ilan_guncelle"])) {
-    // Form verilerini al
     $baslik = mysqli_real_escape_string($baglanti, $_POST["baslik"]);
     $aciklama = mysqli_real_escape_string($baglanti, $_POST["aciklama"]);
     $fiyat = intval($_POST["fiyat"]);
     $oda_sayisi = intval($_POST["oda_sayisi"]);
-    $metrekare = intval($_POST["metrekare"]);
+    $metrekare  = intval($_POST["metrekare"]);
     $sehir = mysqli_real_escape_string($baglanti, $_POST["sehir"]);
     $ilce = mysqli_real_escape_string($baglanti, $_POST["ilce"]);
-    $tur = mysqli_real_escape_string($baglanti, $_POST["tur"]);
-    $durum = mysqli_real_escape_string($baglanti, $_POST["durum"]);
+    $tur  = mysqli_real_escape_string($baglanti, $_POST["tur"]);
+    $durum_input = strtolower(mysqli_real_escape_string($baglanti, $_POST["durum"]));
+    $durum_map = ["satılık" => "Satılık", "kiralık" => "Kiralık", "satıldı/kiralandı" => "Satıldı/Kiralandı"];
+    $durum = $durum_map[$durum_input] ?? "Satılık";
     
     // Form verilerini kontrol et
     if (empty($baslik) || empty($aciklama) || $fiyat <= 0 || $metrekare <= 0 || empty($sehir) || empty($ilce)) {
         $hata_mesaji = "Lütfen tüm alanları doldurun.";
     } else {
-        // İlanı güncelle
-        $guncelle_sorgu = "UPDATE mülk SET 
-                          başlık = '$baslik', 
-                          açıklama = '$aciklama', 
-                          fiyat = $fiyat, 
-                          odasayısı = $oda_sayisi, 
-                          `m^2` = $metrekare, 
-                          şehir = '$sehir', 
-                          ilçe = '$ilce', 
-                          tür = '$tur', 
-                          durum = '$durum' 
-                          WHERE id = $ilan_id";
+        $guncelle_sorgu = "UPDATE `mülk` SET başlık = '$baslik', açıklama = '$aciklama', fiyat = $fiyat, odasayısı= $oda_sayisi, `m^2` = $metrekare, şehir = '$sehir', ilçe = '$ilce', tür = '$tur', durum = '$durum' WHERE id = $ilan_id";
         
         if (mysqli_query($baglanti, $guncelle_sorgu)) {
             $guncellendi = true;
-            // Güncel verileri al
-            $ilan_sorgu = mysqli_query($baglanti, "SELECT * FROM mülk WHERE id = $ilan_id");
-            $ilan = mysqli_fetch_assoc($ilan_sorgu);
+            $ilan = mysqli_fetch_assoc(mysqli_query($baglanti, "SELECT * FROM `mülk` WHERE id = $ilan_id"));
         } else {
-            $hata_mesaji = "İlan güncellenirken bir hata oluştu: " . mysqli_error($baglanti);
+            $hata_mesaji = "İlan güncellenirken hata: " . mysqli_error($baglanti);
         }
     }
 }
@@ -308,10 +290,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["ilan_guncelle"])) {
                                 <div class="col-md-6">
                                     <label for="durum" class="form-label">Durum *</label>
                                     <select class="form-select" id="durum" name="durum" required>
-                                        <option value="">Seçiniz</option>
-                                        <option value="satılık" <?= ($ilan['durum'] == 'satılık') ? 'selected' : '' ?>>Satılık</option>
-                                        <option value="kiralık" <?= ($ilan['durum'] == 'kiralık') ? 'selected' : '' ?>>Kiralık</option>
-                                    </select>
+                                    <option value="">Seçiniz</option>
+                                    <option value="Satılık" <?= ($ilan['durum'] == 'Satılık') ? 'selected' : '' ?>>Satılık</option>
+                                    <option value="Kiralık" <?= ($ilan['durum'] == 'Kiralık') ? 'selected' : '' ?>>Kiralık</option>
+                                </select>
                                 </div>
                             </div>
                             
