@@ -1,73 +1,58 @@
 <?php
 require_once 'baglanti.php';
-
-// Oturum başlatma
 session_start();
 
-// Sayfalama ayarları
-$sayfa_basina_ilan = 21; // Bir sayfada 21 ilan göster
-$sayfa = isset($_GET['sayfa']) ? (int)$_GET['sayfa'] : 1;
+// Sayfalama
+$sayfa_basina_ilan = 21;
+$sayfa            = isset($_GET['sayfa']) ? (int)$_GET['sayfa'] : 1;
 if ($sayfa < 1) $sayfa = 1;
 
-// Filtreleme parametrelerini al
-$min_fiyat = isset($_GET['min_fiyat']) ? intval($_GET['min_fiyat']) : '';
-$max_fiyat = isset($_GET['max_fiyat']) ? intval($_GET['max_fiyat']) : '';
-$oda_sayisi = isset($_GET['oda_sayisi']) ? intval($_GET['oda_sayisi']) : '';
-$min_metrekare = isset($_GET['min_metrekare']) ? intval($_GET['min_metrekare']) : '';
-$max_metrekare = isset($_GET['max_metrekare']) ? intval($_GET['max_metrekare']) : '';
+// Filtreler
+function get_int_or_empty($name) {
+    return (isset($_GET[$name]) && $_GET[$name] !== '') ? intval($_GET[$name]) : '';
+}
+$min_fiyat = get_int_or_empty('min_fiyat');
+$max_fiyat = get_int_or_empty('max_fiyat');
+$oda_sayisi = get_int_or_empty('oda_sayisi');
+$min_metrekare = get_int_or_empty('min_metrekare');
+$max_metrekare = get_int_or_empty('max_metrekare');
 $sehir = isset($_GET['sehir']) ? mysqli_real_escape_string($baglanti, $_GET['sehir']) : '';
-$ilce = isset($_GET['ilce']) ? mysqli_real_escape_string($baglanti, $_GET['ilce']) : '';
-$tur = isset($_GET['tur']) ? mysqli_real_escape_string($baglanti, $_GET['tur']) : '';
-$durum = isset($_GET['durum']) ? mysqli_real_escape_string($baglanti, $_GET['durum']) : '';
+$ilce = isset($_GET['ilce'])  ? mysqli_real_escape_string($baglanti, $_GET['ilce']) : '';
+$tur = isset($_GET['tur'])   ? mysqli_real_escape_string($baglanti, $_GET['tur']) : '';
+$durum_input = isset($_GET['durum']) ? strtolower($_GET['durum']) : '';
+$durum_map = ['satılık' => 'Satılık', 'kiralık' => 'Kiralık'];
+$durum = $durum_map[$durum_input] ?? '';
 
-// SQL sorgusunu oluştur
-$sql = "SELECT SQL_CALC_FOUND_ROWS m.*, k.kullanici_adi AS emlakci_adi
+// Sorgu
+$sql = "SELECT SQL_CALC_FOUND_ROWS m.*,
+               k.`kullanıcı_adı` AS emlakci_adi
         FROM `mülk` m
-        LEFT JOIN `kullanicilar` k ON m.emlakçı_id = k.id
+        LEFT JOIN `kullanıcılar` k ON m.emlakçı_id = k.id
         WHERE 1=1";
 
-if (!empty($min_fiyat)) {
-    $sql .= " AND m.fiyat >= $min_fiyat";
-}
-if (!empty($max_fiyat)) {
-    $sql .= " AND m.fiyat <= $max_fiyat";
-}
-if (!empty($oda_sayisi)) {
-    $sql .= " AND m.odasayısı = $oda_sayisi";
-}
-if (!empty($min_metrekare)) {
-    $sql .= " AND m.`m^2` >= $min_metrekare";
-}
-if (!empty($max_metrekare)) {
-    $sql .= " AND m.`m^2` <= $max_metrekare";
-}
-if (!empty($sehir)) {
-    $sql .= " AND m.şehir = '$sehir'";
-}
-if (!empty($ilce)) {
-    $sql .= " AND m.ilçe = '$ilce'";
-}
-if (!empty($tur)) {
-    $sql .= " AND m.tür = '$tur'";
-}
-if (!empty($durum)) {
-    $sql .= " AND m.durum = '$durum'";
-}
+if ($min_fiyat !== '') $sql .= " AND m.fiyat >= $min_fiyat";
+if ($max_fiyat !== '') $sql .= " AND m.fiyat <= $max_fiyat";
+if ($oda_sayisi !== '') $sql .= " AND m.odasayısı = $oda_sayisi";
+if ($min_metrekare !== '') $sql .= " AND m.`m^2` >= $min_metrekare";
+if ($max_metrekare !== '') $sql .= " AND m.`m^2` <= $max_metrekare";
+if ($sehir !== '') $sql .= " AND m.şehir = '$sehir'";
+if ($ilce !== '') $sql .= " AND m.ilçe  = '$ilce'";
+if ($tur !== '') $sql .= " AND m.tür   = '$tur'";
+if ($durum !== '') $sql .= " AND m.durum = '$durum'";
 
-// Sayfalama için LIMIT ekle
+// Sayfa başına ilan sayısı
 $offset = ($sayfa - 1) * $sayfa_basina_ilan;
-$sql .= " LIMIT $offset, $sayfa_basina_ilan";
+$sql   .= " LIMIT $offset, $sayfa_basina_ilan";
 
-$result = mysqli_query($baglanti, $sql);
+$result = mysqli_query($baglanti, $sql) or die(mysqli_error($baglanti));
 
-// Toplam ilan sayısını al
-$toplam_ilan_sorgu = mysqli_query($baglanti, "SELECT FOUND_ROWS()");
-$toplam_ilan = mysqli_fetch_row($toplam_ilan_sorgu)[0];
-$toplam_sayfa = ceil($toplam_ilan / $sayfa_basina_ilan);
+// Toplam ilan sayısı
+$toplam_ilan       = mysqli_fetch_row(mysqli_query($baglanti, "SELECT FOUND_ROWS()"))[0];
+$toplam_sayfa      = ceil($toplam_ilan / $sayfa_basina_ilan);
 
-// Filtreleme seçenekleri için veritabanından veri çek
+// Filtre listeleri
 $sehirler = mysqli_query($baglanti, "SELECT DISTINCT şehir FROM `mülk` ORDER BY şehir");
-$ilceler = mysqli_query($baglanti, "SELECT DISTINCT ilçe FROM `mülk` ORDER BY ilçe");
+$ilceler  = mysqli_query($baglanti, "SELECT DISTINCT ilçe  FROM `mülk` ORDER BY ilçe");
 ?>
 <!DOCTYPE html>
 <html lang="tr">
@@ -331,7 +316,7 @@ $ilceler = mysqli_query($baglanti, "SELECT DISTINCT ilçe FROM `mülk` ORDER BY 
                                 <div class="card property-card h-100">
                                     <img src="https://via.placeholder.com/400x300?text=<?= urlencode($ilan['başlık']) ?>" class="property-img card-img-top" alt="İlan Görseli">
                                     <div class="card-body">
-                                        <span class="property-status <?= ($ilan['durum'] == 'satılık') ? 'status-satilik' : 'status-kiralik' ?>">
+                                        <span class="property-status <?= (mb_strtolower($ilan['durum']) === 'satılık' ? 'status-satilik' : 'status-kiralik') ?>">
                                             <?= htmlspecialchars($ilan['durum']) ?>
                                         </span>
                                         <h5 class="card-title mt-2"><?= htmlspecialchars($ilan['başlık']) ?></h5>
@@ -463,9 +448,9 @@ $ilceler = mysqli_query($baglanti, "SELECT DISTINCT ilçe FROM `mülk` ORDER BY 
 <?php
 mysqli_close($baglanti);
 
-// Sayfa linki oluşturma fonksiyonu
+// Sayfa linki
 function sayfa_linki($sayfa_no) {
-    $query_params = $_GET;
+    $query_params          = $_GET;
     $query_params['sayfa'] = $sayfa_no;
     return 'index.php?' . http_build_query($query_params);
 }
