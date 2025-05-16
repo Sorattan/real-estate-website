@@ -1,34 +1,28 @@
 <?php
-include("baglanti.php");
+require_once 'baglanti.php';
 
 $kayit_basarili = false;
-$hata_mesaji = "";
+$hata_mesaji    = "";
 
-if (isset($_POST["kayit_ol"]))
-{
+if (isset($_POST["kayit_ol"])) {
     $kullanici_adi = mysqli_real_escape_string($baglanti, $_POST["kullanici_adi"]);
-    $email = mysqli_real_escape_string($baglanti, $_POST["email"]);
+    $email= mysqli_real_escape_string($baglanti, $_POST["email"]);
     $tel = mysqli_real_escape_string($baglanti, $_POST["tel"]);
     $parola = mysqli_real_escape_string($baglanti, $_POST["parola"]);
     $parola_tekrar = mysqli_real_escape_string($baglanti, $_POST["parola_tekrar"]);
     
-    // Parolaların eşleşip eşleşmediğini kontrol et
+    // Parolalar eşleşiyo mu
     if ($parola !== $parola_tekrar) {
         $hata_mesaji = "Girdiğiniz parolalar eşleşmiyor!";
     } else {
-        // Kullanıcı adı veya email'in zaten var olup olmadığını kontrol et
-        $kontrol = "SELECT * FROM müşteri WHERE kullanici_adi = '$kullanici_adi' OR email = '$email'";
+        // Kullanıcı adı veya email zaten var mı
+        $kontrol = "SELECT 1 FROM `müşteri` WHERE `kullanıcı_adı` = '$kullanici_adi' OR email = '$email' LIMIT 1";
         $kontrol_sonuc = mysqli_query($baglanti, $kontrol);
-        
         if (mysqli_num_rows($kontrol_sonuc) > 0) {
             $hata_mesaji = "Bu kullanıcı adı veya e-posta zaten kayıtlı!";
         } else {
-            $ekle = "INSERT INTO müşteri (kullanici_adi, email, parola, tel) 
-                     VALUES ('$kullanici_adi','$email','$parola','$tel')";
-                     
-            $calistirekle = mysqli_query($baglanti, $ekle);
-
-            if ($calistirekle) {
+            $ekle = "INSERT INTO `müşteri` (`kullanıcı_adı`, email, parola, tel) VALUES ('$kullanici_adi', '$email', '$parola', '$tel')";
+            if (mysqli_query($baglanti, $ekle)) {
                 $kayit_basarili = true;
             } else {
                 $hata_mesaji = "Kayıt başarısız: " . mysqli_error($baglanti);
