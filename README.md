@@ -1,116 +1,105 @@
-# HTLM Proje – Real Estate Management
+# 🏠 Real Estate Management – PHP & MySQL
 
 A simple PHP-based real estate website for listing, browsing, and managing properties.  
 Built with plain PHP, HTML/CSS and MySQL it provides user registration, login, CRUD operations on property listings, appointment booking and sales/offers tracking.
 
 ---
 
-## 🖥️ Demo (Local)
+## 🖥️ Running locally (XAMPP)
 
-You can run it on XAMPP under `htdocs`, then visit: http://localhost/Website/
-
----
-
-## 🚀 Features
-
-- **User authentication**  
-  - Customer registration (`müşterikayit.php`) & login (`müşterigiriş.php`)  
-  - Session-based access control; logout via `cikis.php`
-- **Property Listings**  
-  - Add new listing (`ilan_ekle.php` via `ilanlar.sql` schema)  
-  - Edit (`ilan_duzenle.php`) & delete (`ilan_sil.php`)  
-  - Browse all (`mulkler.php`) and view details (`detay.php`)
-- **Booking & Offers**  
-  - Book viewings / appointments (`randevular.php`)  
-  - Submit and track offers (`teklifler.php`)  
-  - Sales management (`satislar.php`)
-- **User Profile**  
-  - View & edit personal info (`profil.php`)
-- **Admin / Management**  
-  - Listing management pages (`ilan_*.php`), sales, appointments etc.
-
----
-
-## 📂 Project Structure
-
- Website/
- ```
- acilis.php   # Landing / welcome
- baglanti.php   # DataBase connection (configure host/user/pass/db)
- kurulum.php   # (Optional) runs installation tasks
- index.php   # Main entry (redirects to login or listings)
- giris.php   # Login page
- kayit.php   # Customer signup
- cikis.php   # Logout
-
- musterigiris.php   # Alternate customer login
- musterikayit.php   # Alternate customer signup
-
- mulkler.php   # Browse all properties
- detay.php   # Single property detail
- ilan_duzenle.php   # Edit property
- ilan_sil.php   # Delete property
-
- teklifler.php   # View/submit offers
- randevular.php   # Appointments interface
- satislar.php   # Sales records
-
- profil.php   # User profile
-
- css/
- └─ index.css   # Styles
-
- img/
- └─ log.jpg   # Logo / header image
+```
+http://localhost/Website/
 ```
 ---
 
-## ⚙️ Prerequisites
+## 🚀 Feature overview
 
-- **XAMPP** (Apache + PHP + MySQL)  
-- A modern web browser (Chrome, Firefox, Edge…)
+* **Authentication**
+
+  * Agent sign‑up (`kayit.php`) & login (`giris.php`)
+  * Customer sign‑up (`müşterikayit.php`) & login (`müşterigiriş.php`)
+  * Session‑based access, logout with `cikis.php`
+* **Listings**
+
+  * Add / edit / delete from **Mülklerim** (`mulkler.php`, modal‑based)
+  * Public catalogue & detail view (`index.php`, `detay.php`)
+* **Offers & Appointments**
+
+  * Submit offers (`teklifler.php`), colour‑graded by discount
+  * Book viewings (`randevular.php`)
+  * Sale / rental finalisation (`satin_alım` trigger + `satislar.php`)
+* **Personal dashboard**
+
+  * KPI cards, latest customers & appointments (`acilis.php`)
+  * Profile management (`profil.php`)
+
+---
+
+## 📂 Folder map
+
+```
+Database/
+   └─ realestate.sql    # Full MySQL dump (views, triggers, data)
+Website/
+├─ acilis.php           # Agent dashboard
+├─ baglanti.php         # DB connection helper
+├─ index.php            # Public landing / catalogue
+│
+├─ giris.php            # Agent login
+├─ kayit.php            # Agent sign‑up
+├─ cikis.php            # Logout (destroys session)
+│
+├─ müşterigiriş.php     # Customer login
+├─ müşterikayit.php     # Customer sign‑up
+│
+├─ mulkler.php          # Manage my listings (CRUD)
+├─ ilan_duzenle.php     # Edit a listing
+├─ ilan_sil.php         # Delete a listing
+│
+├─ teklifler.php        # Incoming offers
+├─ randevular.php       # Appointments calendar
+├─ satislar.php         # Sales / rentals history
+│
+├─ detay.php            # Single‑property detail page
+├─ profil.php           # Agent profile & password change
+│
+├─ css/
+   └─ index.css         # Shared style additions
+```
 
 ---
 
-## 💿 Installation
+## ⚙️ Prerequisites
 
-**1. Clone or download** this repo into your XAMPP `htdocs` folder, renaming folder to `Website` if needed:
-
-   ```
-    C:\xampp\htdocs\Website\
-   ```
-   
-**2. Create the database**
-
-   - In phpMyAdmin, create a database named `realestate`.
-
-   - Import the schema file:
-
-   ```
-    Database/realestate.sql
-   ```
-    
-**3. Configure DB connection**
-   - Open baglanti.php and personalize (if you want) your MySQL credentials. `Default values`:
- 
-   ```
-    $host   = 'localhost';
-    $kullanici   = 'root';
-    $parola   = '';
-    $vt = 'realestate';
-   ```
-   
-**4. (Optional) Run installer**
-   - If you prefer a web-based setup, open:
-  ```
-   http://localhost/Website/kurulum.php
-  ```
-
-**5. Start Using**
-   - Visit http://localhost/Website/
-   
-   - Register a new customer, log in, and begin adding/listing properties.
+* **XAMPP** (PHP ≥ 8.1, MySQL / MariaDB)
+* Any modern browser
 
 ---
-## 📄 License
-This project is released under the MIT License.
+
+## 💿 Installation
+
+1. **Clone** into XAMPP `htdocs`:
+
+   ```
+   C:\xampp\htdocs\Website\
+   ```
+2. **Create DB & import schema**
+
+   * In phpMyAdmin make a DB called **`realestate`**.
+   * Import `Database/realestate.sql`.
+3. **Configure credentials (Optional)** (`baglanti.php`):
+
+   ```php
+   $host = 'localhost';
+   $kullanici = 'root';
+   $parola = '';
+   $vt   = 'realestate';
+   ```
+4. **Browse** to [http://localhost/Website/](http://localhost/Website/)
+   * Register an agent or a customer and you’re set!
+
+---
+
+## 📝 License
+
+Released under the **MIT License**.
