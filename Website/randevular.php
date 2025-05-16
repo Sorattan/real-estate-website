@@ -1,27 +1,23 @@
 <?php
-// Oturum başlatma
 session_start();
-
-// Veritabanı bağlantısı
 require_once 'baglanti.php';
 
-// Kullanıcı giriş kontrolü
+// Giriş kontrolü
 if (!isset($_SESSION["admin_kullanici"]) || !isset($_SESSION["admin_giris"]) || $_SESSION["admin_giris"] !== true) {
-    // Giriş yapılmamış, yönlendir
+    // Yönlendirme
     header("Location: giris.php");
     exit();
 }
 
-// Aktif emlakçı bilgilerini al
+// Aktif emlakçıyı al
 $emlakci_adi = $_SESSION["admin_kullanici"];
 $emlakci_id = 0;
-
-$emlakci_sorgu = mysqli_query($baglanti, "SELECT id FROM kullanicilar WHERE kullanici_adi = '$emlakci_adi'");
+$emlakci_sorgu = mysqli_query($baglanti, "SELECT id FROM `kullanıcılar` WHERE `kullanıcı_adı` = '" . mysqli_real_escape_string($baglanti, $emlakci_adi) . "'");
 if ($emlakci = mysqli_fetch_assoc($emlakci_sorgu)) {
     $emlakci_id = $emlakci['id'];
 }
 
-// Randevu silme işlemi
+// Randevu silme
 if (isset($_GET['sil']) && is_numeric($_GET['sil'])) {
     $randevu_id = intval($_GET['sil']);
     $sil_sorgu = mysqli_query($baglanti, "DELETE FROM randevu WHERE id = $randevu_id");
@@ -35,39 +31,34 @@ if (isset($_GET['sil']) && is_numeric($_GET['sil'])) {
     }
 }
 
-// Bugünün tarihini al
 $bugun = date('Y-m-d');
 
-// Bugünkü randevuları getir
-$bugun_randevular_sorgu = mysqli_query($baglanti, "
-    SELECT r.*, m.başlık as mulk_adi, mu.kullanici_adi as musteri_adi 
+// Bugünkü randevular
+$bugun_randevular_sorgu = mysqli_query($baglanti, "SELECT r.*, m.başlık AS mulk_adi, mu.`kullanıcı_adı` AS musteri_adi
     FROM randevu r
     LEFT JOIN mülk m ON r.ilan_id = m.id
     LEFT JOIN müşteri mu ON r.müşteri_id = mu.id
     WHERE r.randevu_tarihi = '$bugun' AND m.emlakçı_id = '$emlakci_id'
-    ORDER BY r.randevu_saat ASC
-");
+    ORDER BY r.randevu_saat ASC"
+);
 
-// Gelecek randevuları getir
-$gelecek_randevular_sorgu = mysqli_query($baglanti, "
-    SELECT r.*, m.başlık as mulk_adi, mu.kullanici_adi as musteri_adi 
+// Gelecek randevular
+$gelecek_randevular_sorgu = mysqli_query($baglanti, "SELECT r.*, m.başlık AS mulk_adi, mu.`kullanıcı_adı` AS musteri_adi
     FROM randevu r
     LEFT JOIN mülk m ON r.ilan_id = m.id
     LEFT JOIN müşteri mu ON r.müşteri_id = mu.id
     WHERE r.randevu_tarihi > '$bugun' AND m.emlakçı_id = '$emlakci_id'
-    ORDER BY r.randevu_tarihi ASC, r.randevu_saat ASC
-");
+    ORDER BY r.randevu_tarihi ASC, r.randevu_saat ASC"
+);
 
-// Geçmiş randevuları getir
-$gecmis_randevular_sorgu = mysqli_query($baglanti, "
-    SELECT r.*, m.başlık as mulk_adi, mu.kullanici_adi as musteri_adi 
+// Geçmiş randevular
+$gecmis_randevular_sorgu = mysqli_query($baglanti, "SELECT r.*, m.başlık AS mulk_adi, mu.`kullanıcı_adı` AS musteri_adi
     FROM randevu r
     LEFT JOIN mülk m ON r.ilan_id = m.id
     LEFT JOIN müşteri mu ON r.müşteri_id = mu.id
     WHERE r.randevu_tarihi < '$bugun' AND m.emlakçı_id = '$emlakci_id'
-    ORDER BY r.randevu_tarihi DESC, r.randevu_saat DESC
-    LIMIT 20
-");
+    ORDER BY r.randevu_tarihi DESC, r.randevu_saat DESC LIMIT 20"
+);
 ?>
 
 <!DOCTYPE html>
