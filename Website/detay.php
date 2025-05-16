@@ -1,93 +1,80 @@
 <?php
-require_once 'baglanti.php'; // Üyelik veritabanı bağlantısı
-
-// Oturum başlatma
+require_once 'baglanti.php';
 session_start();
 
-// İlan ID'sini al
+// İlan ID'si alma
 if (isset($_GET['id']) && is_numeric($_GET['id'])) {
     $ilan_id = mysqli_real_escape_string($baglanti, $_GET['id']);
 
-    // İlan ve emlakçı bilgilerini çek
-    $ilan_sorgu = mysqli_query($baglanti, "SELECT m.*, k.kullanici_adi AS emlakci_adi, k.email AS emlakci_email, k.tel AS emlakci_tel, k.id AS emlakci_id
-                                           FROM mülk m
-                                           LEFT JOIN kullanicilar k ON m.emlakçı_id = k.id
-                                           WHERE m.id = $ilan_id");
+    // İlan ve emlakçı bilgilerini alma
+    $ilan_sorgu = mysqli_query($baglanti, "SELECT m.*, k.`kullanıcı_adı` AS emlakci_adi, k.email AS emlakci_email, k.tel AS emlakci_tel, k.id AS emlakci_id FROM `mülk` m LEFT JOIN `kullanıcılar` k ON m.emlakçı_id = k.id WHERE  m.id = $ilan_id");
 
+    // Satılmış ya da kiralanmış ilan kontrolü
     if ($ilan = mysqli_fetch_assoc($ilan_sorgu)) {
-        // Satılmış/kiralanmış ilan kontrolü yapalım ama ayrı sayfa göstermeyelim
-        $is_sold = ($ilan['durum'] == 'Satıldı/Kiralandı');
+        $is_sold = ($ilan['durum'] === 'Satıldı/Kiralandı');
         
-        // Teklif gönderme işlemi
-        if (isset($_POST['gonder_teklif']) && isset($_SESSION['giris_yapildi']) && $_SESSION['giris_yapildi'] === true && !$is_sold) {
+        // Teklif gönderme
+        if (isset($_POST['gonder_teklif'], $_SESSION['giris_yapildi']) && $_SESSION['giris_yapildi'] === true && !$is_sold) {
             $teklif_miktari = mysqli_real_escape_string($baglanti, $_POST['teklif_miktari']);
             $musteri_id = mysqli_real_escape_string($baglanti, $_POST['musteri_id']);
             $emlakci_id = mysqli_real_escape_string($baglanti, $_POST['emlakci_id']);
-            
-            $teklif_ekle = "INSERT INTO teklif (ilan_id, müşteri_id, emlakçı_id, Teklif) 
-                            VALUES ('$ilan_id', '$musteri_id', '$emlakci_id', '$teklif_miktari')";
-            
+
+            $teklif_ekle = "INSERT INTO `teklif` (ilan_id, müşteri_id, emlakçı_id, teklif) VALUES('$ilan_id', '$musteri_id', '$emlakci_id', '$teklif_miktari')";
+
             if (mysqli_query($baglanti, $teklif_ekle)) {
                 $teklif_mesaj = "Teklifiniz başarıyla gönderildi!";
                 $teklif_durum = "success";
             } else {
-                $teklif_mesaj = "Teklif gönderilirken bir hata oluştu: " . mysqli_error($baglanti);
+                $teklif_mesaj = "Teklif gönderilirken hata: " . mysqli_error($baglanti);
                 $teklif_durum = "danger";
             }
         }
         
-        // Randevu alma işlemi
-        if (isset($_POST['randevu_al']) && isset($_SESSION['giris_yapildi']) && $_SESSION['giris_yapildi'] === true && !$is_sold) {
+        // Randevu alma
+        if (isset($_POST['randevu_al'], $_SESSION['giris_yapildi']) && $_SESSION['giris_yapildi'] === true && !$is_sold) {
             $randevu_tarihi = mysqli_real_escape_string($baglanti, $_POST['randevu_tarihi']);
             $randevu_saati = mysqli_real_escape_string($baglanti, $_POST['randevu_saati']);
             $musteri_id = mysqli_real_escape_string($baglanti, $_POST['musteri_id']);
             $emlakci_id = mysqli_real_escape_string($baglanti, $_POST['emlakci_id']);
-            
-            // Müşteri ID'sinin kullanicilar tablosunda var olup olmadığını kontrol et
-            $musteri_kontrol = mysqli_query($baglanti, "SELECT id FROM kullanicilar WHERE id = '$musteri_id'");
-            
+
+            // Müşteri kontrolü
+            $musteri_kontrol = mysqli_query($baglanti, "SELECT id FROM `müşteri` WHERE id = '$musteri_id'"
+            );
+
             if (mysqli_num_rows($musteri_kontrol) > 0) {
-                // Müşteri ID'si kullanicilar tablosunda var, randevu ekle
-                $randevu_ekle = "INSERT INTO randevu (ilan_id, müşteri_id, emlakçı_id, randevu_saat, randevu_tarihi) 
-                                 VALUES ('$ilan_id', '$musteri_id', '$emlakci_id', '$randevu_saati', '$randevu_tarihi')";
-                
+                $randevu_ekle = "INSERT INTO `randevu` (ilan_id, müşteri_id, emlakçı_id, randevu_saat, randevu_tarihi) VALUES('$ilan_id', '$musteri_id', '$emlakci_id', '$randevu_saati', '$randevu_tarihi')";
                 if (mysqli_query($baglanti, $randevu_ekle)) {
                     $randevu_mesaj = "Randevunuz başarıyla oluşturuldu!";
                     $randevu_durum = "success";
                 } else {
-                    $randevu_mesaj = "Randevu oluşturulurken bir hata oluştu: " . mysqli_error($baglanti);
+                    $randevu_mesaj = "Randevu oluşturulurken hata: " . mysqli_error($baglanti);
                     $randevu_durum = "danger";
                 }
             } else {
-                // Müşteri ID'si kullanicilar tablosunda yok, hata mesajı göster
-                $randevu_mesaj = "Sistem hatası: Müşteri bilgisi bulunamadı. Lütfen site yöneticisi ile iletişime geçin.";
+                $randevu_mesaj = "Sistem hatası: Müşteri bulunamadı.";
                 $randevu_durum = "danger";
             }
         }
-        
-        // Satın alma işlemi
-        if (isset($_POST['satin_al']) && isset($_SESSION['giris_yapildi']) && $_SESSION['giris_yapildi'] === true && !$is_sold) {
+
+        // Satın alma/Kiralama işlemi
+        if (isset($_POST['satin_al'], $_SESSION['giris_yapildi']) && $_SESSION['giris_yapildi'] === true && !$is_sold) {
             $musteri_id = mysqli_real_escape_string($baglanti, $_POST['musteri_id']);
             $emlakci_id = mysqli_real_escape_string($baglanti, $_POST['emlakci_id']);
-            
-            $satin_al_ekle = "INSERT INTO satın_alım (ilan_id, müşteri_id, emlakçı_id, alım_tarihi) 
-                              VALUES ('$ilan_id', '$musteri_id', '$emlakci_id', NOW())";
-            
+            $satin_al_ekle = "INSERT INTO `satın_alım` (ilan_id, müşteri_id, emlakçı_id, alım_tarihi) VALUES('$ilan_id', '$musteri_id', '$emlakci_id', NOW())";
             if (mysqli_query($baglanti, $satin_al_ekle)) {
-                $satin_al_mesaj = "Satın / Kiralama  işleminiz başarıyla gerçekleştirildi!";
+                $satin_al_mesaj = "İşleminiz başarıyla gerçekleştirildi!";
                 $satin_al_durum = "success";
             } else {
-                $satin_al_mesaj = "Satın  / Kiralama işlemi sırasında bir hata oluştu: " . mysqli_error($baglanti);
+                $satin_al_mesaj = "İşlem sırasında hata: " . mysqli_error($baglanti);
                 $satin_al_durum = "danger";
             }
         }
         
-        // Müşteri ID'sini al (eğer giriş yapılmışsa)
+        // Giriş yapmış Müşteri ID'si alma
         $musteri_id = 0;
-        if (isset($_SESSION['giris_yapildi']) && $_SESSION['giris_yapildi'] === true && isset($_SESSION['kullanici_adi'])) {
+        if (isset($_SESSION['giris_yapildi'], $_SESSION['kullanici_adi']) && $_SESSION['giris_yapildi'] === true) {
             $kullanici_adi = mysqli_real_escape_string($baglanti, $_SESSION['kullanici_adi']);
-            $musteri_sorgu = mysqli_query($baglanti, "SELECT id FROM müşteri WHERE kullanici_adi = '$kullanici_adi'");
-            
+            $musteri_sorgu = mysqli_query($baglanti, "SELECT id FROM `müşteri` WHERE `kullanıcı_adı` = '$kullanici_adi'");
             if ($musteri = mysqli_fetch_assoc($musteri_sorgu)) {
                 $musteri_id = $musteri['id'];
             }
