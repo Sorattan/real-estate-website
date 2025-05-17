@@ -52,7 +52,7 @@ Website/
 ├─ müşterigiriş.php     # Customer login
 ├─ müşterikayit.php     # Customer sign‑up
 │
-├─ mulkler.php          # Manage my listings (CRUD)
+├─ mulkler.php          # Agent listing CRUD
 ├─ ilan_duzenle.php     # Edit a listing
 ├─ ilan_sil.php         # Delete a listing
 │
