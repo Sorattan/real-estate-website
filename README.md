@@ -25,7 +25,7 @@ http://localhost/Website/
   * Public catalogue & detail view (`index.php`, `detay.php`)
 * **Offers & Appointments**
 
-  * Submit offers (`teklifler.php`), colour‑graded by discount
+  * Submit offers (`teklifler.php`)
   * Book viewings (`randevular.php`)
   * Sale / rental finalisation (`satin_alım` trigger + `satislar.php`)
 * **Personal dashboard**
