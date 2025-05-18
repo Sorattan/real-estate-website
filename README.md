@@ -39,7 +39,7 @@ http://localhost/Website/
 
 ```
 Database/
-   └─ realestate.sql    # Full MySQL dump (views, triggers, data)
+   └─ realestate.sql    # Full MySQL dump (indexes, views, triggers, data)
 Website/
 ├─ acilis.php           # Agent dashboard
 ├─ baglanti.php         # DB connection helper
