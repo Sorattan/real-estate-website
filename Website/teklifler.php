@@ -34,8 +34,55 @@ if (isset($_GET['sil']) && is_numeric($_GET['sil'])) {
 // Teklif onaylama
 if (isset($_GET['onayla']) && is_numeric($_GET['onayla'])) {
     $teklif_id = intval($_GET['onayla']);
-    $onay_mesaji = "Teklif başarıyla onaylandı!";
-    $onay_durum = "success";
+    
+    // Önce teklif bilgilerini alalım
+    $teklif_sorgu = mysqli_query($baglanti, "SELECT * FROM teklif WHERE id = $teklif_id");
+    if ($teklif_bilgi = mysqli_fetch_assoc($teklif_sorgu)) {
+        $ilan_id = $teklif_bilgi['ilan_id'];
+        $musteri_id = $teklif_bilgi['müşteri_id'];
+        $emlakci_id = $teklif_bilgi['emlakçı_id'];
+        $teklif_fiyati = $teklif_bilgi['teklif'];
+        
+        // İşlemler için transaction başlatalım
+        mysqli_begin_transaction($baglanti);
+        
+        try {
+            // 1. Mülk fiyatını güncelle
+            $fiyat_guncelle = mysqli_query($baglanti, 
+                "UPDATE `mülk` SET fiyat = '$teklif_fiyati', durum = 'Satıldı/Kiralandı' 
+                WHERE id = '$ilan_id'"
+            );
+            
+            if (!$fiyat_guncelle) {
+                throw new Exception("Mülk fiyatı güncellenirken hata: " . mysqli_error($baglanti));
+            }
+            
+            // 2. Satın alım tablosuna kaydet
+            $satin_alim_ekle = mysqli_query($baglanti,
+                "INSERT INTO `satın_alım` (ilan_id, müşteri_id, emlakçı_id, alım_tarihi) 
+                VALUES('$ilan_id', '$musteri_id', '$emlakci_id', NOW())"
+            );
+            
+            if (!$satin_alim_ekle) {
+                throw new Exception("Satın alım kaydedilirken hata: " . mysqli_error($baglanti));
+            }
+            
+            // İşlemleri tamamla
+            mysqli_commit($baglanti);
+            
+            $onay_mesaji = "Teklif başarıyla onaylandı ve mülk satışı gerçekleştirildi!";
+            $onay_durum = "success";
+            
+        } catch (Exception $e) {
+            // Hata durumunda işlemleri geri al
+            mysqli_rollback($baglanti);
+            $onay_mesaji = "Hata: " . $e->getMessage();
+            $onay_durum = "danger";
+        }
+    } else {
+        $onay_mesaji = "Teklif bulunamadı!";
+        $onay_durum = "danger";
+    }
 }
 
 // Yeni teklifler
@@ -267,7 +314,7 @@ $yeni_teklifler_sorgu = mysqli_query($baglanti,
                                         <?php while ($teklif = mysqli_fetch_assoc($yeni_teklifler_sorgu)): 
                                             // Teklif ve mülk fiyatı karşılaştırması
                                             $mulk_fiyat = $teklif['mulk_fiyat'] ?? 0;
-                                            $teklif_miktar = $teklif['Teklif'] ?? 0;
+                                            $teklif_miktar = $teklif['teklif'] ?? 0;
                                             
                                             $fark_yuzde = 0;
                                             $offer_class = '';
@@ -284,6 +331,9 @@ $yeni_teklifler_sorgu = mysqli_query($baglanti,
                                                     $offer_class = 'low-offer';
                                                 }
                                             }
+                                            
+                                            // Satılmış/Kiralanmış kontrolü
+                                            $disabled = ($teklif['mulk_durum'] === 'Satıldı/Kiralandı') ? true : false;
                                         ?>
                                             <tr class="<?= $offer_class ?>">
                                                 <td><?= $teklif['id'] ?></td>
@@ -301,12 +351,16 @@ $yeni_teklifler_sorgu = mysqli_query($baglanti,
                                                     <?php endif; ?>
                                                 </td>
                                                 <td>
-                                                    <a href="teklifler.php?onayla=<?= $teklif['id'] ?>" class="btn btn-sm btn-success" onclick="return confirm('Bu teklifi onaylamak istediğinizden emin misiniz?')">
-                                                        <i class="fas fa-check"></i> Onayla
-                                                    </a>
-                                                    <a href="teklifler.php?sil=<?= $teklif['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Bu teklifi silmek istediğinizden emin misiniz?')">
-                                                        <i class="fas fa-trash"></i> Reddet
-                                                    </a>
+                                                    <?php if ($disabled): ?>
+                                                        <span class="badge bg-secondary">Bu mülk satılmış/kiralanmış</span>
+                                                    <?php else: ?>
+                                                        <a href="teklifler.php?onayla=<?= $teklif['id'] ?>" class="btn btn-sm btn-success" onclick="return confirm('Bu teklifi onaylamak istediğinizden emin misiniz? Onaylandığında mülk satılmış/kiralanmış olarak işaretlenecek ve fiyatı güncellenecektir.')">
+                                                            <i class="fas fa-check"></i> Onayla
+                                                        </a>
+                                                        <a href="teklifler.php?sil=<?= $teklif['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Bu teklifi silmek istediğinizden emin misiniz?')">
+                                                            <i class="fas fa-trash"></i> Reddet
+                                                        </a>
+                                                    <?php endif; ?>
                                                     <a href="detay.php?id=<?= $teklif['ilan_id'] ?>" class="btn btn-sm btn-info" target="_blank">
                                                         <i class="fas fa-eye"></i> İlanı Gör
                                                     </a>
